@@ -16,12 +16,24 @@ class StoreLeaveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'agent_id'   => ['required', 'exists:agents,id'],
-            'type'       => ['required', Rule::enum(LeaveType::class)],
-            'date_start' => ['required', 'date', 'after_or_equal:today'],
-            'date_end'   => ['required', 'date', 'after_or_equal:date_start'],
-            'reason'     => ['nullable', 'string', 'max:1000'],
-            'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'agent_id'     => ['required', 'exists:agents,id'],
+            'type'         => ['required', Rule::enum(LeaveType::class)],
+            'date_start'   => ['required', 'date'],
+            'date_end'     => ['required', 'date', 'after_or_equal:date_start'],
+            'working_days' => [
+                'required',
+                'numeric',
+                'min:0.5',
+                'max:60',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    if (fmod((float) $value * 2, 1) !== 0.0) {
+                        $fail('Le nombre de jours doit être un multiple de 0.5.');
+                    }
+                },
+
+            ],
+            'reason'       => ['nullable', 'string', 'max:1000'],
+            'attachment'   => ['nullable', 'file', 'mimes:pdf,jpg,png', 'max:2048'],
         ];
     }
 }

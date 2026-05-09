@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->date('date_start');
             $table->date('date_end');
-            $table->integer('working_days');
+            $table->decimal('working_days', 4, 1);
             $table->text('reason')->nullable();
             $table->text('refusal_reason')->nullable();
             $table->foreignId('approved_by')->nullable()->constrained('users')->nullOnDelete();

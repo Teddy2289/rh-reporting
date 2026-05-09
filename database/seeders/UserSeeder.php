@@ -14,7 +14,7 @@ class UserSeeder extends Seeder
         // 1. Création des rôles
         $roles = ['admin', 'rh', 'manager', 'agent'];
         foreach ($roles as $roleName) {
-            Role::findOrCreate($roleName);
+            Role::findOrCreate($roleName,'api');
         }
 
         // 2. Création de l'Admin

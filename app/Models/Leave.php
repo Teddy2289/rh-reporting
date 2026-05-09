@@ -36,7 +36,19 @@ class Leave extends Model
             'date_start'  => 'date',
             'date_end'    => 'date',
             'approved_at' => 'datetime',
+            'working_days' => 'decimal:1'
         ];
+    }
+
+    public function getWorkingDaysLabelAttribute(): string
+    {
+        $days = (float) $this->working_days;
+
+        if ($days === 0.5) {
+            return '½ journée';
+        }
+
+        return $days . ' ' . ($days <= 1 ? 'jour' : 'jours');
     }
 
     public function agent(): BelongsTo
