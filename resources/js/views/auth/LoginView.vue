@@ -12,7 +12,7 @@
                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <h1 class="text-2xl font-bold text-dark-900">RH Planning</h1>
+                    <h1 class="text-2xl font-bold text-dark-900">Rapport Mensuel</h1>
                     <p class="text-sm text-dark-500 mt-1">Gérez vos plannings et congés</p>
                 </div>
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AgentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ClientController;
@@ -77,4 +78,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/team', [ReportController::class, 'teamReport']);
         Route::get('/export', [ReportController::class, 'export']);
     });
+
+    Route::get('activity-logs', [ActivityLogController::class, 'index']);
+    Route::post('activity-logs/bulk', [ActivityLogController::class, 'bulkStore']);
 });

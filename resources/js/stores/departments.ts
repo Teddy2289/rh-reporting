@@ -19,8 +19,8 @@ export const useDepartmentsStore = defineStore('departments', {
   }),
 
   getters: {
-    activeDepartments: (state) => state.departments.filter(d => d.is_active),
-    inactiveDepartments: (state) => state.departments.filter(d => !d.is_active),
+    activeDepartments: (state) => state.departments.filter(d => d && d.is_active === true),
+    inactiveDepartments: (state) => state.departments.filter(d => d && d.is_active === false),
     departmentsCount: (state) => state.departments.length
   },
 
@@ -31,8 +31,12 @@ export const useDepartmentsStore = defineStore('departments', {
 
       try {
         const { data } = await apiClient.get('/departments')
-        this.departments = data.data
-        return data.data
+        this.departments = (data.data || []).map((dept: any) => ({
+          ...dept,
+          is_active: dept.is_active ?? true,
+          agents_count: dept.agents_count ?? 0
+        }))
+        return this.departments
       } catch (err: any) {
         this.error = err.response?.data?.message || 'Erreur lors du chargement des départements'
         throw err
@@ -47,11 +51,17 @@ export const useDepartmentsStore = defineStore('departments', {
 
       try {
         const { data } = await apiClient.post('/departments', payload)
-        this.departments.push(data.data)
-        return data.data
+        const newDepartment = {
+          ...data.data,
+          is_active: data.data.is_active ?? true,
+          agents_count: data.data.agents_count ?? 0
+        }
+        this.departments.push(newDepartment)
+        return newDepartment
       } catch (err: any) {
-        this.error = err.response?.data?.message || 'Erreur lors de la création du département'
-        throw err
+        const message = err.response?.data?.message || 'Erreur lors de la création du département'
+        this.error = message
+        throw new Error(message)
       } finally {
         this.loading = false
       }
@@ -63,17 +73,23 @@ export const useDepartmentsStore = defineStore('departments', {
 
       try {
         const { data } = await apiClient.put(`/departments/${id}`, payload)
+        const updatedDepartment = {
+          ...data.data,
+          is_active: data.data.is_active ?? true,
+          agents_count: data.data.agents_count ?? 0
+        }
         const index = this.departments.findIndex(d => d.id === id)
         if (index !== -1) {
-          this.departments[index] = data.data
+          this.departments[index] = updatedDepartment
         }
         if (this.currentDepartment?.id === id) {
-          this.currentDepartment = data.data
+          this.currentDepartment = updatedDepartment
         }
-        return data.data
+        return updatedDepartment
       } catch (err: any) {
-        this.error = err.response?.data?.message || 'Erreur lors de la mise à jour du département'
-        throw err
+        const message = err.response?.data?.message || 'Erreur lors de la mise à jour du département'
+        this.error = message
+        throw new Error(message)
       } finally {
         this.loading = false
       }
@@ -90,8 +106,9 @@ export const useDepartmentsStore = defineStore('departments', {
           this.currentDepartment = null
         }
       } catch (err: any) {
-        this.error = err.response?.data?.message || 'Erreur lors de la suppression du département'
-        throw err
+        const message = err.response?.data?.message || 'Erreur lors de la suppression du département'
+        this.error = message
+        throw new Error(message)
       } finally {
         this.loading = false
       }

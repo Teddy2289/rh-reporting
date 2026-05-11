@@ -11,8 +11,12 @@
                         </svg>
                     </RouterLink>
                     <div>
-                        <h1 class="text-2xl font-semibold text-dark-900">Nouvelle demande de congé</h1>
-                        <p class="text-sm text-dark-500 mt-1">Saisissez les informations pour votre demande</p>
+                        <h1 class="text-2xl font-semibold text-dark-900">
+                            Nouvelle demande de congé
+                        </h1>
+                        <p class="text-sm text-dark-500 mt-1">
+                            Saisissez les informations pour votre demande
+                        </p>
                     </div>
                 </div>
             </div>
@@ -22,17 +26,26 @@
                 <div v-if="balance" class="mb-6 p-4 bg-primary-50 rounded-xl">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-medium text-primary-700">Solde de congés {{ currentYear }}</p>
-                            <p class="text-2xl font-bold text-primary-600">{{ balance.remaining_days }} jours</p>
+                            <p class="text-sm font-medium text-primary-700">
+                                Solde de congés {{ currentYear }}
+                            </p>
+                            <p class="text-2xl font-bold text-primary-600">
+                                {{ balance.remaining_days }} jours
+                            </p>
                         </div>
                         <div class="text-right">
-                            <p class="text-xs text-primary-600">Alloués: {{ balance.allocated_days }}</p>
-                            <p class="text-xs text-primary-600">Utilisés: {{ balance.used_days }}</p>
+                            <p class="text-xs text-primary-600">
+                                Alloués: {{ balance.allocated_days }}
+                            </p>
+                            <p class="text-xs text-primary-600">
+                                Utilisés: {{ balance.used_days }}
+                            </p>
                         </div>
                     </div>
                     <div class="mt-3 h-2 bg-primary-200 rounded-full overflow-hidden">
-                        <div class="h-full bg-primary-500 rounded-full transition-all"
-                            :style="{ width: `${(balance.used_days / balance.allocated_days) * 100}%` }"></div>
+                        <div class="h-full bg-primary-500 rounded-full transition-all" :style="{
+                            width: `${(balance.used_days / balance.allocated_days) * 100}%`,
+                        }"></div>
                     </div>
                 </div>
 
@@ -41,11 +54,15 @@
 
                     <AppSelect v-if="showAgentSelect" v-model="form.agent_id" label="Agent" required
                         :error="ve.agent_id?.[0]">
-                        <option v-for="a in agents" :key="a.id" :value="a.id">{{ a.full_name }}</option>
+                        <option v-for="a in agents" :key="a.id" :value="a.id">
+                            {{ a.full_name }}
+                        </option>
                     </AppSelect>
 
                     <AppSelect v-model="form.type" label="Type de congé" required :error="ve.type?.[0]">
-                        <option v-for="(label, key) in LEAVE_TYPE_LABELS" :key="key" :value="key">{{ label }}</option>
+                        <option v-for="(label, key) in LEAVE_TYPE_LABELS" :key="key" :value="key">
+                            {{ label }}
+                        </option>
                     </AppSelect>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -61,7 +78,8 @@
                         <div v-if="fullDays === 0"
                             class="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-100">
                             <span class="text-sm text-red-700">
-                                ⚠️ La période sélectionnée ne contient aucun jour ouvré (dimanche).
+                                ⚠️ La période sélectionnée ne contient aucun
+                                jour ouvré (dimanche).
                             </span>
                         </div>
 
@@ -69,7 +87,9 @@
                         <div v-else class="flex items-center gap-4 p-3 bg-blue-50 rounded-xl border border-blue-100">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm text-blue-700">Durée :</span>
-                                <span class="text-lg font-bold text-blue-800">{{ workingDaysLabel }}</span>
+                                <span class="text-lg font-bold text-blue-800">{{
+                                    workingDaysLabel
+                                    }}</span>
                             </div>
                             <!-- Demi-journée : seulement pour 1 jour entier lun-ven -->
                             <label v-if="canChooseHalfDay"
@@ -104,10 +124,13 @@
                             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div class="text-sm text-secondary-800">
-                        <p class="font-medium mb-1">Informations sur les congés</p>
+                        <p class="font-medium mb-1">
+                            Informations sur les congés
+                        </p>
                         <p class="opacity-90">
-                            Les congés sont décomptés en jours ouvrés (du lundi au samedi matin).
-                            Les dimanches ne sont pas décomptés.
+                            Les congés sont décomptés en jours ouvrés (du lundi
+                            au samedi matin). Les dimanches ne sont pas
+                            décomptés.
                         </p>
                     </div>
                 </div>
@@ -117,136 +140,153 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed, watch } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import AppLayout from '@/components/layout/AppLayout.vue'
-import AppInput from '@/components/common/AppInput.vue'
-import AppSelect from '@/components/common/AppSelect.vue'
-import AppButton from '@/components/common/AppButton.vue'
-import AppAlert from '@/components/common/AppAlert.vue'
-import { useLeavesStore } from '@/stores/leaves'
-import { useAuthStore } from '@/stores/auth'
-import { useAgentsStore } from '@/stores/agents'
-import { useApi } from '@/composables/useApi'
-import { LEAVE_TYPE_LABELS } from '@/utils'
-import { LeaveType } from '@/types'
-import type { Agent, LeaveBalance } from '@/types'
-import { useToast } from '@/composables/useToast'
-const toast = useToast()
+import { reactive, ref, onMounted, computed, watch } from "vue";
+import { useRouter, RouterLink } from "vue-router";
+import AppLayout from "@/components/layout/AppLayout.vue";
+import AppInput from "@/components/common/AppInput.vue";
+import AppSelect from "@/components/common/AppSelect.vue";
+import AppButton from "@/components/common/AppButton.vue";
+import AppAlert from "@/components/common/AppAlert.vue";
+import { useLeavesStore } from "@/stores/leaves";
+import { useAuthStore } from "@/stores/auth";
+import { useAgentsStore } from "@/stores/agents";
+import { useApi } from "@/composables/useApi";
+import { LEAVE_TYPE_LABELS } from "@/utils";
+import { LeaveType } from "@/types";
+import type { Agent, LeaveBalance } from "@/types";
+import { useToast } from "@/composables/useToast";
 
+const router = useRouter();
+const leavesStore = useLeavesStore();
+const authStore = useAuthStore();
+const agentsStore = useAgentsStore();
+const { loading, error, validationErrors: ve, execute } = useApi();
 
-
-const router = useRouter()
-const leavesStore = useLeavesStore()
-const authStore = useAuthStore()
-const agentsStore = useAgentsStore()
-const { loading, error, validationErrors: ve, execute } = useApi()
-
-const showAgentSelect = authStore.hasAnyRole('admin', 'rh')
-const currentYear = ref(new Date().getFullYear())
-const balance = ref<LeaveBalance | null>(null)
-const agents = ref<Agent[]>([])
-const isHalfDay = ref(false)
+const showAgentSelect = authStore.hasAnyRole("admin", "rh");
+const currentYear = ref(new Date().getFullYear());
+const balance = ref<LeaveBalance | null>(null);
+const agents = ref<Agent[]>([]);
+const isHalfDay = ref(false);
+const toast      = useToast()
 
 const form = reactive({
     agent_id: authStore.user?.agent?.id ?? 0,
     type: LeaveType.Annual,
-    date_start: '',
-    date_end: '',
-    reason: '',
-})
+    date_start: "",
+    date_end: "",
+    reason: "",
+});
 
 // ─── Parsing local (évite décalage UTC à Madagascar) ─────────────────────────
 function parseLocalDate(dateStr: string): Date {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    return new Date(year, month - 1, day)
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
 }
 
 // ─── Calcul : lun-ven = 1j | sam = 0.5j | dim = 0 ───────────────────────────
 function calcWorkingDays(start: string, end: string): number {
-    if (!start || !end) return 0
-    const s = parseLocalDate(start)
-    const e = parseLocalDate(end)
-    if (e < s) return 0
-    let count = 0
-    const cur = new Date(s)
+    if (!start || !end) return 0;
+    const s = parseLocalDate(start);
+    const e = parseLocalDate(end);
+    if (e < s) return 0;
+    let count = 0;
+    const cur = new Date(s);
     while (cur <= e) {
-        const d = cur.getDay()
-        if (d >= 1 && d <= 5) count += 1    // lun–ven
-        else if (d === 6) count += 0.5  // sam
-        cur.setDate(cur.getDate() + 1)
+        const d = cur.getDay();
+        if (d >= 1 && d <= 5)
+            count += 1; // lun–ven
+        else if (d === 6) count += 0.5; // samedi
+        // dimanche = 0
+        cur.setDate(cur.getDate() + 1);
     }
-    return count
+    return count;
 }
 
-const fullDays = computed(() => calcWorkingDays(form.date_start, form.date_end))
-const canChooseHalfDay = computed(() => fullDays.value === 1) // 1 seul jour entier lun-ven
+const fullDays = computed(() =>
+    calcWorkingDays(form.date_start, form.date_end),
+);
+const canChooseHalfDay = computed(() => fullDays.value === 1);
 const workingDays = computed(() => {
-    if (fullDays.value === 0) return 0
-    if (isHalfDay.value && canChooseHalfDay.value) return 0.5
-    return fullDays.value
-})
+    if (fullDays.value === 0) return 0;
+    if (isHalfDay.value && canChooseHalfDay.value) return 0.5;
+    return fullDays.value;
+});
 const workingDaysLabel = computed(() => {
-    const d = workingDays.value
-    if (d === 0) return ''
-    if (d === 0.5) return '½ journée'
-    return `${d} ${d <= 1 ? 'jour' : 'jours'}`
-})
+    const d = workingDays.value;
+    if (d === 0) return "";
+    if (d === 0.5) return "½ journée";
+    return `${d} ${d <= 1 ? "jour" : "jours"}`;
+});
 
 // Reset demi-journée si période change
 watch(fullDays, (d) => {
-    if (d !== 1) isHalfDay.value = false
-})
+    if (d !== 1) isHalfDay.value = false;
+});
 
 // ─── Balance ─────────────────────────────────────────────────────────────────
 async function fetchBalance() {
-    if (!form.agent_id || !form.date_start) return
+    if (!form.agent_id || !form.date_start) return;
     try {
-        const [year] = form.date_start.split('-').map(Number)
-        currentYear.value = year
-        balance.value = await leavesStore.fetchBalance(form.agent_id, year)
+        const [year] = form.date_start.split("-").map(Number);
+        currentYear.value = year;
+        balance.value = await leavesStore.fetchBalance(form.agent_id, year);
     } catch {
-        balance.value = null
+        balance.value = null;
     }
 }
 
 function handleDateChange() {
-    isHalfDay.value = false
+    isHalfDay.value = false;
     // Reset date_end si antérieure à date_start
-    if (form.date_end && form.date_start && parseLocalDate(form.date_start) > parseLocalDate(form.date_end)) {
-        form.date_end = ''
+    if (
+        form.date_end &&
+        form.date_start &&
+        parseLocalDate(form.date_start) > parseLocalDate(form.date_end)
+    ) {
+        form.date_end = "";
     }
-    fetchBalance()
+    fetchBalance();
 }
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 async function handleSubmit() {
-    if (workingDays.value <= 0) return
+    if (workingDays.value <= 0) {
+        toast.error("La période sélectionnée ne contient aucun jour ouvré");
+        return;
+    }
 
-    // Payload explicite — pas de spread pour éviter les oublis
+    // Vérifier le solde disponible
+    if (balance.value && workingDays.value > balance.value.remaining_days) {
+        toast.error(`Solde insuffisant. Il vous reste ${balance.value.remaining_days} jours.`);
+        return;
+    }
+
     const payload = {
         agent_id: form.agent_id,
         type: form.type,
         date_start: form.date_start,
         date_end: form.date_end,
-        working_days: workingDays.value,  // ← inclus explicitement
+        working_days: workingDays.value,
         reason: form.reason || null,
-    }
+    };
 
-    const result = await execute(() => leavesStore.createLeave(payload))
-    if (result) {
-        toast.success('Demande de congé soumise avec succès !')
-        router.push({ name: 'leaves' })
+    await execute(() => leavesStore.createLeave(payload));
+
+    if (!error.value) {
+        toast.success("Demande de congé soumise avec succès !");
+        await router.push({ name: "leaves" });
+    } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 }
 
-watch(() => form.agent_id, fetchBalance)
+watch(() => form.agent_id, fetchBalance);
 
 onMounted(async () => {
     if (showAgentSelect) {
-        await agentsStore.fetchAgents({ active_only: true, per_page: 200 })
-        agents.value = agentsStore.agents
+        await agentsStore.fetchAgents({ active_only: true, per_page: 200 });
+        agents.value = agentsStore.agents;
     }
-    await fetchBalance()
-})
+    await fetchBalance();
+});
 </script>

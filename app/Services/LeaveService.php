@@ -2,173 +2,249 @@
 
 namespace App\Services;
 
-use App\Enums\LeaveStatus;
-use App\Enums\LeaveType;
 use App\Models\Agent;
 use App\Models\Leave;
 use App\Models\LeaveBalance;
-use App\Models\PlanningSlot;
-use App\Enums\SlotType;
+use App\Enums\LeaveStatus;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LeaveService
 {
-    /**
-     * Calcule le nombre de jours ouvrés entre deux dates (hors week-ends).
-     */
-    public function calculateWorkingDays(Carbon $start, Carbon $end): int
-    {
-        $period = CarbonPeriod::create($start, $end);
-        return collect($period)
-            ->filter(fn($date) => !$date->isWeekend())
-            ->count();
-    }
+    const MONTHLY_ACCRUAL = 2.5; // 2.5 jours par mois
+    const MAX_CARRIED_OVER = 15; // Maximum de jours reportables
 
     /**
-     * Vérifie que l'agent a suffisamment de solde.
-     */
-    public function hasEnoughBalance(Agent $agent, LeaveType $type, int $workingDays): bool
-    {
-        if (!$type->deductsBalance()) {
-            return true;
-        }
-
-        $balance = $this->getOrCreateBalance($agent, now()->year);
-        return $balance->remaining_days >= $workingDays;
-    }
-
-    /**
-     * Crée ou retourne le solde congé d'un agent pour une année.
-     */
-    public function getOrCreateBalance(Agent $agent, int $year): LeaveBalance
-    {
-        return LeaveBalance::firstOrCreate(
-            ['agent_id' => $agent->id, 'year' => $year],
-            [
-                'allocated_days'    => $agent->annual_leave_days,
-                'used_days'         => 0,
-                'pending_days'      => 0,
-                'carried_over_days' => 0,
-            ]
-        );
-    }
-
-    /**
-     * Soumet une demande de congé.
+     * Demander un congé
      */
     public function requestLeave(Agent $agent, array $data): Leave
     {
-        $start       = Carbon::parse($data['date_start']);
-        $end         = Carbon::parse($data['date_end']);
-        $type        = LeaveType::from($data['type']);
-        $workingDays = $this->calculateWorkingDays($start, $end);
+        return DB::transaction(function () use ($agent, $data) {
+            // Calculer les jours ouvrés
+            $workingDays = $this->calculateWorkingDays(
+                Carbon::parse($data['date_start']),
+                Carbon::parse($data['date_end'])
+            );
 
-        if ($type->deductsBalance() && !$this->hasEnoughBalance($agent, $type, $workingDays)) {
-            throw new \Exception("Solde de congés insuffisant. Solde disponible : {$this->getOrCreateBalance($agent, $start->year)->remaining_days} jours.");
-        }
+            $data['working_days'] = $workingDays;
+            $data['status'] = LeaveStatus::Pending;
+            $data['agent_id'] = $agent->id;
 
-        return DB::transaction(function () use ($agent, $data, $workingDays, $type, $start) {
-            $leave = Leave::create([
-                'agent_id'    => $agent->id,
-                'type'        => $type->value,
-                'status'      => LeaveStatus::Pending->value,
-                'date_start'  => $data['date_start'],
-                'date_end'    => $data['date_end'],
-                'working_days' => $workingDays,
-                'reason'      => $data['reason'] ?? null,
-                'attachment'  => $data['attachment'] ?? null,
-            ]);
+            // Vérifier le solde
+            $balance = $this->getOrCreateBalance($agent, Carbon::parse($data['date_start'])->year);
 
-            // Réserve les jours en "pending"
-            if ($type->deductsBalance()) {
-                $balance = $this->getOrCreateBalance($agent, $start->year);
-                $balance->increment('pending_days', $workingDays);
+            if (!$balance->canTakeLeave($workingDays)) {
+                throw new \Exception("Solde de congés insuffisant. Solde restant : {$balance->remaining_days} jours");
             }
 
-            return $leave;
+            // Réserver les jours (pending)
+            $balance->deductPendingDays($workingDays);
+
+            return Leave::create($data);
         });
     }
 
     /**
-     * Approuve un congé et génère les slots leave dans le planning.
+     * Approuver un congé
      */
     public function approveLeave(Leave $leave, int $approvedBy): Leave
     {
         return DB::transaction(function () use ($leave, $approvedBy) {
+            $balance = $this->getOrCreateBalance($leave->agent, $leave->date_start->year);
+
+            // Transformer pending en used
+            $balance->approvePendingDays($leave->working_days);
+
             $leave->update([
-                'status'      => LeaveStatus::Approved->value,
+                'status' => LeaveStatus::Approved,
                 'approved_by' => $approvedBy,
-                'approved_at' => now(),
+                'approved_at' => now()
             ]);
-
-            // Met à jour le solde
-            if ($leave->type->deductsBalance()) {
-                $balance = $this->getOrCreateBalance($leave->agent, $leave->date_start->year);
-                $balance->decrement('pending_days', $leave->working_days);
-                $balance->increment('used_days', $leave->working_days);
-            }
-
-            // Génère les slots de type "leave" dans le planning
-            $this->generateLeaveSlots($leave);
 
             return $leave->fresh();
         });
     }
 
     /**
-     * Refuse un congé.
+     * Refuser un congé
      */
     public function refuseLeave(Leave $leave, int $approvedBy, string $reason): Leave
     {
         return DB::transaction(function () use ($leave, $approvedBy, $reason) {
-            $leave->update([
-                'status'         => LeaveStatus::Refused->value,
-                'approved_by'    => $approvedBy,
-                'approved_at'    => now(),
-                'refusal_reason' => $reason,
-            ]);
+            $balance = $this->getOrCreateBalance($leave->agent, $leave->date_start->year);
 
-            // Libère les jours "pending"
-            if ($leave->type->deductsBalance()) {
-                $balance = $this->getOrCreateBalance($leave->agent, $leave->date_start->year);
-                $balance->decrement('pending_days', $leave->working_days);
-            }
+            // Libérer les jours réservés
+            $balance->rejectPendingDays($leave->working_days);
+
+            $leave->update([
+                'status' => LeaveStatus::Refused,
+                'approved_by' => $approvedBy,
+                'refusal_reason' => $reason
+            ]);
 
             return $leave->fresh();
         });
     }
 
     /**
-     * Génère les PlanningSlots de type "leave" pour chaque jour ouvré du congé.
+     * Calculer les jours ouvrés (lundi-vendredi)
      */
-    private function generateLeaveSlots(Leave $leave): void
+    public function calculateWorkingDays(Carbon $start, Carbon $end): float
     {
-        $period = CarbonPeriod::create($leave->date_start, $leave->date_end);
-        $agent  = $leave->agent;
+        $days = 0;
+        $current = $start->copy();
 
-        foreach ($period as $date) {
-            if ($date->isWeekend()) continue;
+        while ($current <= $end) {
+            // Lundi = 1, Dimanche = 7
+            if ($current->dayOfWeek !== Carbon::SATURDAY && $current->dayOfWeek !== Carbon::SUNDAY) {
+                $days++;
+            }
+            $current->addDay();
+        }
 
-            // Calcule les heures attendues ce jour-là
-            $start = '09:00';
-            $end   = '17:30'; // 8h30 moins 30min de pause = 8h
+        return $days;
+    }
 
-            // Supprime les anciens slots de travail pour ce jour (s'il y en a)
-            PlanningSlot::where('agent_id', $agent->id)
-                ->where('date', $date->format('Y-m-d'))
-                ->delete();
+    /**
+     * Obtenir ou créer le solde de congés
+     */
+    public function getOrCreateBalance(Agent $agent, int $year): LeaveBalance
+    {
+        $balance = LeaveBalance::firstOrCreate(
+            ['agent_id' => $agent->id, 'year' => $year],
+            [
+                'allocated_days' => 0,
+                'used_days' => 0,
+                'pending_days' => 0,
+                'carried_over_days' => 0,
+                'last_updated_at' => now()
+            ]
+        );
 
-            PlanningSlot::create([
-                'agent_id'   => $agent->id,
-                'date'       => $date->format('Y-m-d'),
-                'time_start' => $start,
-                'time_end'   => $end,
-                'type'       => SlotType::Leave->value,
-                'note'       => $leave->type->label(),
-                'created_by' => $leave->approved_by,
-            ]);
+        // Si c'est la première fois qu'on crée le solde pour cette année
+        if ($balance->wasRecentlyCreated) {
+            $this->initializeYearlyBalance($agent, $year, $balance);
+        }
+
+        return $balance;
+    }
+
+    /**
+     * Initialiser le solde pour une nouvelle année
+     */
+    protected function initializeYearlyBalance(Agent $agent, int $year, LeaveBalance $balance): void
+    {
+        // Calculer les jours acquis (2.5 par mois travaillé)
+        $monthsWorked = $this->calculateMonthsWorked($agent->hire_date, $year);
+        $allocatedDays = $monthsWorked * self::MONTHLY_ACCRUAL;
+
+        // Reporter les jours non utilisés de l'année précédente (limité)
+        if ($year > date('Y')) {
+            $previousBalance = LeaveBalance::query()
+                ->where('agent_id', $agent->id)
+                ->where('year', $year - 1)
+                ->first();
+
+            if ($previousBalance) {
+                $carryOver = min($previousBalance->remaining_days, self::MAX_CARRIED_OVER);
+                $balance->carried_over_days = $carryOver;
+            }
+        }
+
+        $balance->allocated_days = $allocatedDays;
+        $balance->save();
+    }
+
+    /**
+     * Calculer les mois travaillés dans l'année
+     */
+    protected function calculateMonthsWorked(Carbon $hireDate, int $year): int
+    {
+        if ($hireDate->year > $year) return 0;
+
+        $startMonth = ($hireDate->year == $year) ? $hireDate->month : 1;
+        $currentMonth = Carbon::now()->year == $year ? Carbon::now()->month : 12;
+
+        return max(0, $currentMonth - $startMonth + 1);
+    }
+
+    /**
+     * CRON JOB - Ajouter 2.5 jours au début de chaque mois
+     * À exécuter le 1er de chaque mois
+     */
+    public function addMonthlyLeaveDays(): void
+    {
+        $currentYear = Carbon::now()->year;
+        $currentMonth = Carbon::now()->month;
+
+        // Récupérer tous les agents actifs
+        $agents = Agent::query()->where('is_active', true)->get();
+
+        foreach ($agents as $agent) {
+            DB::transaction(function () use ($agent, $currentYear, $currentMonth) {
+                $balance = $this->getOrCreateBalance($agent, $currentYear);
+
+                // Vérifier si l'agent a travaillé ce mois-ci
+                if ($this->shouldAccrueLeave($agent, $currentYear, $currentMonth)) {
+                    $balance->addAllocatedDays(self::MONTHLY_ACCRUAL);
+
+                    Log::info("Ajout de " . self::MONTHLY_ACCRUAL . " jours de congé pour l'agent {$agent->id} - Mois {$currentMonth}/{$currentYear}");
+                }
+            });
+        }
+    }
+
+    /**
+     * Vérifier si l'agent a droit aux congés pour ce mois
+     */
+    protected function shouldAccrueLeave(Agent $agent, int $year, int $month): bool
+    {
+        // L'agent doit être embauché avant la fin du mois
+        if ($agent->hire_date->year > $year) return false;
+        if ($agent->hire_date->year == $year && $agent->hire_date->month > $month) return false;
+
+        // Vérifier si le contrat n'est pas terminé
+        if ($agent->contract_end_date && $agent->contract_end_date->year < $year) return false;
+        if ($agent->contract_end_date && $agent->contract_end_date->year == $year && $agent->contract_end_date->month < $month) return false;
+
+        return true;
+    }
+
+    /**
+     * CRON JOB - Recalculer les soldes en début d'année
+     * À exécuter le 1er janvier
+     */
+    public function processNewYearRollover(): void
+    {
+        $lastYear = Carbon::now()->subYear()->year;
+        $currentYear = Carbon::now()->year;
+
+        // Récupérer tous les soldes de l'année dernière
+        $oldBalances = LeaveBalance::query()->where('year', $lastYear)->get();
+
+        foreach ($oldBalances as $oldBalance) {
+            $remaining = $oldBalance->remaining_days;
+
+            if ($remaining > 0) {
+                // Créer ou mettre à jour le solde de la nouvelle année
+                $newBalance = LeaveBalance::firstOrCreate(
+                    ['agent_id' => $oldBalance->agent_id, 'year' => $currentYear],
+                    [
+                        'allocated_days' => 0,
+                        'used_days' => 0,
+                        'pending_days' => 0,
+                        'carried_over_days' => 0
+                    ]
+                );
+
+                // Reporter les jours (avec limite)
+                $carryOver = min($remaining, self::MAX_CARRIED_OVER);
+                $newBalance->carried_over_days = $carryOver;
+                $newBalance->save();
+
+                Log::info("Report de {$carryOver} jours pour l'agent {$oldBalance->agent_id} vers {$currentYear}");
+            }
         }
     }
 }

@@ -201,8 +201,13 @@ export interface AgentFilters {
 export interface Leave {
   id: number
   agent_id: number
-  type: LeaveType
-  status: LeaveStatus
+  type: 
+  { value: LeaveType; label: string },
+  status: {
+    value: LeaveStatus; 
+    label: string;
+    color: string;
+  };
   date_start: string
   date_end: string
   working_days: number

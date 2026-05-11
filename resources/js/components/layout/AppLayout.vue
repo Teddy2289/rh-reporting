@@ -1,6 +1,6 @@
 <template>
     <div class="min-h-screen flex bg-dark-50">
-          <AppToast />
+
         <!-- Sidebar -->
         <aside class="w-64 bg-white border-r border-dark-100 flex flex-col">
             <div class="h-16 flex items-center px-6 border-b border-dark-100">
@@ -12,27 +12,28 @@
                                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                     </div>
-                    <span class="text-lg font-semibold text-dark-800">RH Planning</span>
+                    <span class="text-lg font-semibold text-dark-800">Rapport Mensuel</span>
                 </div>
             </div>
 
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <NavItem :to="{ name: 'dashboard' }" icon="dashboard">Tableau de bord</NavItem>
-                <NavItem :to="{ name: 'planning' }" icon="planning">Planning</NavItem>
+                <NavItem :to="{ name: 'dashboard' }" icon="dashboard">Accueil</NavItem>
+                <!-- <NavItem :to="{ name: 'planning' }" icon="planning">Planning</NavItem> -->
                 <NavItem :to="{ name: 'leaves' }" icon="leaves">Congés</NavItem>
 
                 <template v-if="authStore.hasAnyRole('admin', 'rh', 'manager')">
                     <NavItem :to="{ name: 'agents' }" icon="agents">Agents</NavItem>
+                    <NavItem :to="{ name: 'activity-logs' }" icon="activity">Feuilles d'activité</NavItem>
                 </template>
 
                 <template v-if="authStore.hasAnyRole('admin', 'rh')">
                     <NavItem :to="{ name: 'departments' }" icon="departments">Départements</NavItem>
                     <NavItem :to="{ name: 'clients' }" icon="clients">Clients</NavItem>
-                    <NavItem :to="{ name: 'missions' }" icon="missions">Missions</NavItem>
+                    <!-- <NavItem :to="{ name: 'missions' }" icon="missions">Missions</NavItem> -->
                 </template>
 
                 <template v-if="authStore.hasAnyRole('admin', 'rh', 'manager')">
-                    <NavItem :to="{ name: 'reports' }" icon="reports">Rapports</NavItem>
+                    <!-- <NavItem :to="{ name: 'reports' }" icon="reports">Rapports</NavItem> -->
                 </template>
             </nav>
 
@@ -73,7 +74,6 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import NavItem from './NavItem.vue'
-import AppToast from '../common/AppToast.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()

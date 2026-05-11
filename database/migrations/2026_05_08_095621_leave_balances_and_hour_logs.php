@@ -11,30 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('leave_balances', function (Blueprint $table) {
+       Schema::create('leave_balances', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('agent_id')->constrained()->cascadeOnDelete();
-            $table->year('year');
-            $table->decimal('allocated_days', 5, 1)->default(25);
-            $table->decimal('used_days', 5, 1)->default(0);
-            $table->decimal('pending_days', 5, 1)->default(0);
-            $table->decimal('carried_over_days', 5, 1)->default(0);
+            $table->foreignId('agent_id')->constrained()->onDelete('cascade');
+            $table->integer('year');
+            $table->decimal('allocated_days', 8, 2)->default(0);
+            $table->decimal('used_days', 8, 2)->default(0);
+            $table->decimal('pending_days', 8, 2)->default(0);
+            $table->decimal('carried_over_days', 8, 2)->default(0);
+            $table->timestamp('last_updated_at')->nullable();
             $table->timestamps();
 
             $table->unique(['agent_id', 'year']);
-        });
-
-        Schema::create('hour_logs', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('agent_id')->constrained()->cascadeOnDelete();
-            $table->date('date');
-            $table->integer('worked_minutes')->default(0);
-            $table->integer('expected_minutes')->default(480);
-            $table->integer('overtime_minutes')->default(0);
-            $table->timestamps();
-
-            $table->unique(['agent_id', 'date']);
-            $table->index(['agent_id', 'date']);
+            $table->index(['agent_id', 'year']);
         });
     }
 
@@ -43,7 +32,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('hour_logs');
+
         Schema::dropIfExists('leave_balances');
     }
 };

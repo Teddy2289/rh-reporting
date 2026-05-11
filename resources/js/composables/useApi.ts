@@ -1,29 +1,40 @@
 import { ref } from "vue";
 import { extractErrorMessage, extractValidationErrors } from "@/utils";
+import { useToast } from "./useToast";
 
-/**
- * Composable générique pour wrapper les appels API avec gestion
- * automatique du loading, des erreurs et des erreurs de validation.
- *
- * @example
- * const { execute, loading, error } = useApi()
- * await execute(() => agentsApi.index())
- */
 export function useApi() {
     const loading = ref(false);
     const error = ref<string | null>(null);
     const validationErrors = ref<Record<string, string[]>>({});
+    const toast = useToast();
 
-    async function execute<T>(fn: () => Promise<T>): Promise<T | null> {
+    async function execute<T>(
+        fn: () => Promise<T>,
+        options?: {
+            successMessage?: string;
+            errorMessage?: string;
+            silent?: boolean;  // pas de toast du tout
+        }
+    ): Promise<T | null> {
         loading.value = true;
         error.value = null;
         validationErrors.value = {};
 
         try {
-            return await fn();
+            const result = await fn();
+            if (options?.successMessage) {
+                toast.success(options.successMessage);
+            }
+            return result;
         } catch (err) {
-            error.value = extractErrorMessage(err);
+            const msg =
+                options?.errorMessage ??
+                extractErrorMessage(err);
+            error.value = msg;
             validationErrors.value = extractValidationErrors(err);
+            if (!options?.silent) {
+                toast.error(msg);
+            }
             return null;
         } finally {
             loading.value = false;

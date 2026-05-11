@@ -35,6 +35,9 @@ const MissionsView = () => import("@/views/missions/MissionsView.vue");
 // Reports
 const ReportsView = () => import("@/views/reports/ReportsView.vue");
 
+// Activity Logs
+const ActivityLogView = () => import("@/views/activity-logs/Activitylogview.vue");
+
 // ─── Route definitions ────────────────────────────────────────────────────────
 
 const routes: RouteRecordRaw[] = [
@@ -133,6 +136,8 @@ const routes: RouteRecordRaw[] = [
         component: ClientsView,
         meta: { requiresAuth: true, roles: ["admin", "rh"] },
     },
+
+    { path: '/activity-logs', name: 'activity-logs', component: ActivityLogView },
 
     // Missions
     {

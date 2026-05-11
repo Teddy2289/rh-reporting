@@ -16,9 +16,8 @@ return new class extends Migration
 
             // Clés étrangères
             $table->foreignId('agent_id')->constrained('agents')->onDelete('cascade');
-            $table->foreignId('client_id')->constrained('clients')->onDelete('cascade');
-            $table->foreignId('mission_id')->constrained('missions')->onDelete('cascade');
-
+            $table->foreignId('client_id')->nullable();
+            $table->foreignId('mission_id')->nullable();
             // Détails du planning
             $table->date('date');
             $table->time('time_start');
