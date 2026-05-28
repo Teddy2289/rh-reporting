@@ -20,20 +20,21 @@ Schedule::command(ProcessYearRollover::class)
     ->runInBackground()
     ->onOneServer();
 
-// Alternative : Exécution quotidienne avec condition (pour plus de flexibilité)
+// name() est obligatoire avant onOneServer() pour les closures
 Schedule::call(function () {
     $today = now();
 
-    // Vérifier si c'est le 1er du mois
     if ($today->day === 1) {
         Artisan::call('leave:accrue-monthly');
     }
 
-    // Vérifier si c'est le 1er janvier
     if ($today->month === 1 && $today->day === 1) {
         Artisan::call('leave:year-rollover');
     }
-})->dailyAt('00:01')->onOneServer();
+})
+->dailyAt('00:01')
+->name('daily-leave-check')
+->onOneServer();
 
 // Avec gestion des environnements
 if (app()->environment('production')) {
